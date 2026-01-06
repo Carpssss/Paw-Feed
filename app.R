@@ -16,6 +16,7 @@ pool <- dbPool(
   user   = Sys.getenv("DB_USER"),
   password = Sys.getenv("DB_PASS"),
   port = as.numeric(Sys.getenv("DB_PORT")),
+  ssl.ca      = "ca.pem",
   client.flag = 2048
 )
 
