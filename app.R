@@ -1,3 +1,6 @@
+options(shiny.sanitize.errors = FALSE)
+options(shiny.fullstacktrace = TRUE)
+
 if (!interactive()) sink(stderr(), type = "output")
 options(shiny.sanitize.errors = FALSE)
 
@@ -12,6 +15,7 @@ library(sodium)
 
 
 # --------------------- 1. LOGIN UI ---------------------
+verbatimTextOutput("db_status")
 login_ui <- div(
   class = "login-container",
   div(class = "login-box",
@@ -151,22 +155,24 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   # --------------------- DATABASE CONNECTION ---------------------
 # Note: Using RMariaDB::MariaDB() and the updated SSL argument 'ssl_ca'
-pool <- dbPool(
-  RMariaDB::MariaDB(),
-  dbname   = Sys.getenv("DB_NAME"),
-  host     = Sys.getenv("DB_HOST"),
-  user     = Sys.getenv("DB_USER"),
-  password = Sys.getenv("DB_PASS"),
-  port     = as.numeric(Sys.getenv("DB_PORT")),
-  ssl_ca   = "ca.pem",
-  # ADD THESE TWO LINES BELOW:
-  idleTimeout = 60000, 
-  validationQuery = "SELECT 1"
-)
-
-onStop(function() {
-  poolClose(pool)
-})
+output$db_status <- renderText({
+    tryCatch({
+      # Attempt a simple connection test
+      test_con <- dbConnect(
+        RMariaDB::MariaDB(),
+        dbname   = Sys.getenv("DB_NAME"),
+        host     = Sys.getenv("DB_HOST"),
+        user     = Sys.getenv("DB_USER"),
+        password = Sys.getenv("DB_PASS"),
+        port     = as.numeric(Sys.getenv("DB_PORT")),
+        ssl_ca   = "ca.pem"
+      )
+      dbDisconnect(test_con)
+      "Database Connection: SUCCESS ✅"
+    }, error = function(e) {
+      paste("Database Connection: FAILED ❌ Error:", e$message)
+    })
+  })
   
   auth <- reactiveValues(logged_in = FALSE, user_info = NULL)
   feedingTimes <- reactiveVal(character(0))
