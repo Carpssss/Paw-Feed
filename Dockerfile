@@ -1,20 +1,23 @@
-# Use a slim version of R
 FROM rocker/shiny:latest
 
-# Install system dependencies for MySQL and SSL
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     libssl-dev \
     libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install the R packages you need
+# Install R packages
 RUN R -e "install.packages(c('shiny', 'shinyjs', 'DBI', 'RMySQL', 'pool', 'sodium'), repos='https://cran.rstudio.com/')"
 
-# Copy your app code into the Docker image
+# 1. Remove the default welcome page
+RUN rm -rf /srv/shiny-server/*
+
+# 2. Copy your files into the root of the shiny-server directory
 COPY . /srv/shiny-server/
 
-# Expose the port Shiny runs on
+# 3. Ensure permissions are correct
+RUN chown -R shiny:shiny /srv/shiny-server/
+
 EXPOSE 3838
 
-# Run the app
 CMD ["/usr/bin/shiny-server"]
