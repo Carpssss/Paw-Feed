@@ -10,14 +10,13 @@ library(sodium)
 
 # --------------------- DATABASE CONNECTION ---------------------
 pool <- dbPool(
-  RMySQL::MySQL(),
-  dbname = Sys.getenv("DB_NAME"),
-  host = Sys.getenv("DB_HOST"),
-  user = Sys.getenv("DB_USER"),
+  RMariaDB::MariaDB(),
+  dbname   = Sys.getenv("DB_NAME"),
+  host     = Sys.getenv("DB_HOST"),
+  user     = Sys.getenv("DB_USER"),
   password = Sys.getenv("DB_PASS"),
-  port = as.numeric(Sys.getenv("DB_PORT")),
-  ssl.ca = "ca.pem",
-  client.flag = 2048
+  port     = Sys.getenv("DB_PORT"),
+  ssl_ca   = "ca.pem" 
 )
 
 onStop(function() {
