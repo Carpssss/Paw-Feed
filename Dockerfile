@@ -13,6 +13,6 @@ RUN R -e "install.packages(c('shiny', 'shinyjs', 'DBI', 'RMariaDB', 'pool', 'sod
 RUN rm -rf /srv/shiny-server/*
 COPY . /srv/shiny-server/
 RUN chown -R shiny:shiny /srv/shiny-server/
-
+USER shiny
 EXPOSE 3838
 CMD ["/usr/bin/shiny-server"]
