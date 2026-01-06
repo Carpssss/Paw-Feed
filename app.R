@@ -9,21 +9,7 @@ library(RMariaDB) # Switched to RMariaDB for better Aiven SSL support
 library(pool)
 library(sodium)
 
-# --------------------- DATABASE CONNECTION ---------------------
-# Note: Using RMariaDB::MariaDB() and the updated SSL argument 'ssl_ca'
-pool <- dbPool(
-  RMariaDB::MariaDB(),
-  dbname   = Sys.getenv("DB_NAME"),
-  host     = Sys.getenv("DB_HOST"),
-  user     = Sys.getenv("DB_USER"),
-  password = Sys.getenv("DB_PASS"),
-  port     = as.numeric(Sys.getenv("DB_PORT")),
-  ssl_ca   = "ca.pem" # This matches the file you uploaded to GitHub
-)
 
-onStop(function() {
-  poolClose(pool)
-})
 
 # --------------------- 1. LOGIN UI ---------------------
 login_ui <- div(
@@ -163,6 +149,22 @@ ui <- fluidPage(
 
 # --------------------- SERVER LOGIC ---------------------
 server <- function(input, output, session) {
+  # --------------------- DATABASE CONNECTION ---------------------
+# Note: Using RMariaDB::MariaDB() and the updated SSL argument 'ssl_ca'
+pool <- dbPool(
+  RMariaDB::MariaDB(),
+  dbname   = Sys.getenv("DB_NAME"),
+  host     = Sys.getenv("DB_HOST"),
+  user     = Sys.getenv("DB_USER"),
+  password = Sys.getenv("DB_PASS"),
+  port     = as.numeric(Sys.getenv("DB_PORT")),
+  ssl_ca   = "ca.pem" # This matches the file you uploaded to GitHub
+)
+
+onStop(function() {
+  poolClose(pool)
+})
+  
   auth <- reactiveValues(logged_in = FALSE, user_info = NULL)
   feedingTimes <- reactiveVal(character(0))
   refreshTrigger <- reactiveVal(0) 
