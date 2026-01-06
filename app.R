@@ -158,7 +158,10 @@ pool <- dbPool(
   user     = Sys.getenv("DB_USER"),
   password = Sys.getenv("DB_PASS"),
   port     = as.numeric(Sys.getenv("DB_PORT")),
-  ssl_ca   = "ca.pem" # This matches the file you uploaded to GitHub
+  ssl_ca   = "ca.pem",
+  # ADD THESE TWO LINES BELOW:
+  idleTimeout = 60000, 
+  validationQuery = "SELECT 1"
 )
 
 onStop(function() {
