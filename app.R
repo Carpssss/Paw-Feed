@@ -8,16 +8,16 @@ options(shiny.sanitize.errors = FALSE)
 library(shiny)
 library(shinyjs)
 library(DBI)
-library(RMariaDB) # Switched to RMariaDB for better Aiven SSL support
+library(RMariaDB)
 library(pool)
 library(sodium)
 
 
 
-# --------------------- 1. LOGIN UI ---------------------
-verbatimTextOutput("db_status")
+# --------------------- 1. LOGIN UI --------------------
 login_ui <- div(
   class = "login-container",
+  verbatimTextOutput("db_status"),
   div(class = "login-box",
       h2("Paw Feed", class = "login-logo"),
       p("Welcome back, human", class = "login-subtitle"),
@@ -155,19 +155,27 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   # --------------------- DATABASE CONNECTION ---------------------
 # Note: Using RMariaDB::MariaDB() and the updated SSL argument 'ssl_ca'
-output$db_status <- renderText({
+pool <- dbPool(
+    RMariaDB::MariaDB(),
+    dbname   = Sys.getenv("DB_NAME"),
+    host     = Sys.getenv("DB_HOST"),
+    user     = Sys.getenv("DB_USER"),
+    password = Sys.getenv("DB_PASS"),
+    port     = as.numeric(Sys.getenv("DB_PORT")),
+    ssl_ca   = "ca.pem",
+    validationQuery = "SELECT 1"
+  )
+  
+  # Ensure pool closes when user leaves
+  onStop(function() {
+    poolClose(pool)
+  })
+
+  output$db_status <- renderText({
     tryCatch({
-      # Attempt a simple connection test
-      test_con <- dbConnect(
-        RMariaDB::MariaDB(),
-        dbname   = Sys.getenv("DB_NAME"),
-        host     = Sys.getenv("DB_HOST"),
-        user     = Sys.getenv("DB_USER"),
-        password = Sys.getenv("DB_PASS"),
-        port     = as.numeric(Sys.getenv("DB_PORT")),
-        ssl_ca   = "ca.pem"
-      )
-      dbDisconnect(test_con)
+      # Test the pool we just created
+      conn <- poolCheckout(pool)
+      poolReturn(conn)
       "Database Connection: SUCCESS ✅"
     }, error = function(e) {
       paste("Database Connection: FAILED ❌ Error:", e$message)
@@ -194,9 +202,7 @@ output$db_status <- renderText({
   })
   
   output$page_content <- renderUI({
-    if (is.null(auth$logged_in)) {
-      return(div(class = "loading-screen", div(class = "loader")))
-    } else if (auth$logged_in == FALSE) {
+    if (auth$logged_in == FALSE) {
       return(login_ui)
     } else {
       return(dashboard_ui)
@@ -205,23 +211,27 @@ output$db_status <- renderText({
   
   observeEvent(input$login_btn, {
     req(input$user_email, input$user_password)
-    user_query <- dbGetQuery(pool, sprintf(
-      "SELECT * FROM users WHERE email = %s", 
-      dbQuoteString(pool, input$user_email)
-    ))
-    
-    if (nrow(user_query) == 1) {
-      if (password_verify(user_query$password_hash[1], input$user_password)) {
-        auth$logged_in <- TRUE
-        auth$user_info <- user_query
-        session$sendCustomMessage("setCookie", list(name = "pawfeed_user", value = input$user_email))
-        showNotification("Welcome back!", type = "message")
+  
+    tryCatch({
+      user_query <- dbGetQuery(pool, sprintf(
+        "SELECT * FROM users WHERE email = %s", 
+        dbQuoteString(pool, input$user_email)
+      ))
+      
+      if (nrow(user_query) == 1) {
+        if (password_verify(user_query$password_hash[1], input$user_password)) {
+          auth$logged_in <- TRUE
+          auth$user_info <- user_query
+          showNotification("Welcome back!", type = "message")
+        } else {
+          showNotification("Invalid password", type = "error")
+        }
       } else {
-        showNotification("Invalid password", type = "error")
+        showNotification("User not found", type = "error")
       }
-    } else {
-      showNotification("User not found", type = "error")
-    }
+    }, error = function(e) {
+      showNotification(paste("Login Error:", e$message), type = "error")
+    })
   })
   
   observeEvent(input$logout_btn, {
