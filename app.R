@@ -153,33 +153,29 @@ ui <- fluidPage(
 
 # --------------------- SERVER LOGIC ---------------------
 server <- function(input, output, session) {
-  # --------------------- DATABASE CONNECTION ---------------------
-# Note: Using RMariaDB::MariaDB() and the updated SSL argument 'ssl_ca'
-pool <- dbPool(
-    RMariaDB::MariaDB(),
-    dbname   = Sys.getenv("DB_NAME"),
-    host     = Sys.getenv("DB_HOST"),
-    user     = Sys.getenv("DB_USER"),
-    password = Sys.getenv("DB_PASS"),
-    port     = as.numeric(Sys.getenv("DB_PORT")),
-    ssl_ca   = "ca.pem",
-    validationQuery = "SELECT 1"
-  )
-  
-  # Ensure pool closes when user leaves
-  onStop(function() {
-    poolClose(pool)
+# --------------------- DATABASE CONNECTION ---------------------
+pool <- tryCatch({
+    dbPool(
+      RMariaDB::MariaDB(),
+      dbname   = Sys.getenv("DB_NAME"),
+      host     = Sys.getenv("DB_HOST"),
+      user     = Sys.getenv("DB_USER"),
+      password = Sys.getenv("DB_PASS"),
+      port     = as.numeric(Sys.getenv("DB_PORT")),
+      ssl_ca   = "ca.pem",
+      idleTimeout = 60000,
+      validationQuery = "SELECT 1"
+    )
+  }, error = function(e) {
+    print(paste("Database initialization error:", e$message))
+    NULL
   })
 
+  onStop(function() { if (!is.null(pool)) poolClose(pool) })
+
   output$db_status <- renderText({
-    tryCatch({
-      # Test the pool we just created
-      conn <- poolCheckout(pool)
-      poolReturn(conn)
-      "Database Connection: SUCCESS ✅"
-    }, error = function(e) {
-      paste("Database Connection: FAILED ❌ Error:", e$message)
-    })
+    if (is.null(pool)) return("❌ Database Not Connected - Check Aiven/Render Settings")
+    "Database Ready"
   })
   
   auth <- reactiveValues(logged_in = FALSE, user_info = NULL)
