@@ -8,8 +8,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Re-install packages
-RUN R -e "install.packages(c('shiny', 'shinyjs', 'DBI', 'RMySQL', 'pool', 'sodium'), repos='https://cran.rstudio.com/')"
-
+RUN R -e "install.packages(c('shiny', 'shinyjs', 'DBI', 'RMariaDB', 'pool', 'sodium'), repos='https://cran.rstudio.com/')"
 # 3. Clean, Copy, and Set Permissions
 RUN rm -rf /srv/shiny-server/*
 COPY . /srv/shiny-server/
