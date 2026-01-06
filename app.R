@@ -1,3 +1,5 @@
+if (!interactive()) sink(stderr(), type = "output")
+options(shiny.sanitize.errors = FALSE)
 # --------------------- LIBRARIES ---------------------
 library(shiny)
 library(shinyjs)
