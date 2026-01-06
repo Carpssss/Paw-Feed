@@ -9,10 +9,11 @@ library(sodium)
 # --------------------- DATABASE CONNECTION ---------------------
 pool <- dbPool(
   RMySQL::MySQL(),
-  dbname = "pet_feeding_db",
-  host = "localhost",
-  user = "root",
-  password = "Jamil123#"
+  dbname = Sys.getenv("DB_NAME"),
+  host   = Sys.getenv("DB_HOST"),
+  user   = Sys.getenv("DB_USER"),
+  password = Sys.getenv("DB_PASS"),
+  port = as.numeric(Sys.getenv("DB_PORT"))
 )
 
 onStop(function() {
