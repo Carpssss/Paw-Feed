@@ -12,11 +12,11 @@ library(sodium)
 pool <- dbPool(
   RMySQL::MySQL(),
   dbname = Sys.getenv("DB_NAME"),
-  host   = Sys.getenv("DB_HOST"),
-  user   = Sys.getenv("DB_USER"),
+  host = Sys.getenv("DB_HOST"),
+  user = Sys.getenv("DB_USER"),
   password = Sys.getenv("DB_PASS"),
   port = as.numeric(Sys.getenv("DB_PORT")),
-  ssl.ca      = "ca.pem",
+  ssl.ca = "ca.pem",
   client.flag = 2048
 )
 
