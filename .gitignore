@@ -1,0 +1,7 @@
+# Ignore R history and temp files
+.Rhistory
+.RData
+.Rproj.user/
+
+# IMPORTANT: If you have a separate config file for DB passwords, ignore it!
+# For now, just a reminder to never hard-code passwords in public repos.
