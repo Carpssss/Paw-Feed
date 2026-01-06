@@ -1,0 +1,1037 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+.loading-screen {
+    height: 100vh;
+    width: 100vw;
+    background-color: #1a1a1a; /* Match your background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.loader {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #333;
+    border-top: 3px solid #b5894b; /* Your gold color */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+.login-container {
+    position: relative; /* Required for the absolute child */
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #000000;
+    overflow: hidden; /* Keeps the floating logo inside the screen */
+}
+
+.login-container::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    
+    background-image: 
+        linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), 
+        url("logo.png");
+    
+    background-size: 700px;
+    background-repeat: no-repeat;
+    background-position: center;
+    
+    /* Apply the animation */
+    animation: floatLogo 6s ease-in-out infinite;
+    z-index: 0;
+}
+
+@keyframes floatLogo {
+    0% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(1.1); /* Subtle pulse/zoom */
+        opacity: 0.9;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.7;
+    }
+}
+
+.login-box {
+  position: relative;
+  z-index: 1;
+  background: rgba(45, 45, 45, 0.7); 
+  backdrop-filter: blur(15px);       
+  -webkit-backdrop-filter: blur(15px); 
+  padding: 40px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+.login-logo {
+  color: #b5894b; /* Your gold color */
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 5px;
+}
+
+.btn-login {
+  width: 100%;
+  background-color: #b5894b;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  margin-top: 20px;
+  transition: transform 0.2s ease;
+}
+
+.btn-login:hover {
+  background-color: #c99a5b;
+  transform: translateY(-2px);
+}
+body {
+  background-color: #000000;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed; 
+  background-size: cover;
+  opacity: 1; 
+  font-family: 'Inter', sans-serif;
+  color: #ffffff;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 250px;
+  opacity: 0.1;
+  z-index: -1; 
+}
+
+.main-container {
+  width: 90%; 
+  max-width: 800px; 
+  margin: 0 auto;
+  min-height: 100vh;
+  text-align: center;
+  padding: 20px 0px;
+  transition: width 0.3s ease;
+}
+
+
+.header-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);    /* The 'Engaging' blur effect */
+  -webkit-backdrop-filter: blur(10px);
+  margin-bottom: 40px;
+}
+.header-wrapper::after {
+  content: "";
+  position: absolute;
+  bottom: -18px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(
+    to right, 
+    transparent 0%, 
+    #1f2937 50%, 
+    transparent 100%
+  );
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+/* Logo & Branding */
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-logo {
+  width: 40px;
+  height: 40px;
+  filter: drop-shadow(0 0 8px rgba(181, 137, 75, 0.3)); /* Subtle glow */
+}
+
+.brand-text {
+  text-align: left;
+}
+
+.header h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.tagline {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  display: block;
+}
+
+/* Refined Add Button */
+.add-pet-header-btn {
+  background: linear-gradient(135deg, #4a3d5c 0%, #3a2d4c 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.add-pet-header-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(74, 61, 92, 0.4);
+  background: linear-gradient(135deg, #5a4d6c 0%, #4a3d5c 100%);
+}
+
+/* Updated Button Style to match Minimalist aesthetic */
+.add-pet-header-btn {
+  background-color: #1a1a1a; /* Dark button */
+  color: #d4a574;           /* Gold text */
+  border: 1px solid #d4a574;
+  padding: 12px 28px;
+  border-radius: 30px;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.add-pet-header-btn:hover {
+  background-color: #d4a574;
+  color: #000000;
+  box-shadow: 0 0 20px rgba(212, 165, 116, 0.2);
+  transform: translateY(-2px);
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.add-pet-header-btn {
+  background-color: #4a3d5c;
+  color: #ffffff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  font-family: 'Montserrat', sans-serif;
+  transition: all 0.3s;
+}
+
+.add-pet-header-btn:hover {
+  background-color: #5a4d6c;
+  transform: translateY(-1px);
+}
+
+.empty-state-container {
+  padding: 40px 20px; 
+  border: 1px dashed #333333;
+  border-radius: 20px;
+  text-align: center;
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-icon {
+  font-size: 40px;
+  margin-bottom: 15px;
+  opacity: 0.6;
+}
+
+.empty-state-container h2 {
+  font-size: 1.2rem;
+  word-wrap: break-word;
+}
+
+.empty-state-container p {
+  color: #888888;
+  font-size: 14px;
+  max-width: 300px;
+  margin: 0 auto 30px auto;
+  line-height: 1.5;
+}
+
+.card-delete-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: #ff6b6b;
+  font-size: 20px;
+  z-index: 10;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.card-delete-btn:hover {
+  color: #ff4d4d;
+  transform: scale(1.2);
+}
+
+/* Container for the toggle */
+.alarm-toggle {
+  position: relative;
+  display: flex;
+  align-items: center; /* Vertical centering */
+  justify-content: center;
+  width: 54px;
+  height: 28px;
+  margin: 0; /* Ensure no outside margin is leaking in */
+}
+
+/* Hide the default checkbox */
+.alarm-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The Slider (the background) */
+.switch {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #333333;
+  transition: background-color .5s ease;
+  border-radius: 34px;
+  margin-bottom: 0 !important; /* OVERRIDE Bootstrap default label margin */
+}
+
+/* The Circle (the knob) */
+.switch::before {
+  position: absolute;
+  content: "";
+  height: 20px; /* Slightly smaller to center it better vertically */
+  width: 20px;
+  left: 4px;
+  top: 4px;    /* Using top instead of bottom for more reliable centering */
+  background-color: #d1d1d1;
+  transition: transform .5s ease, background-color .5s ease;
+  border-radius: 50%;
+}
+
+/* ON State Background */
+input:checked + .switch {
+  background-color: #b5894b; /* Gold color from your image */
+}
+
+/* Knob Movement */
+input:checked + .switch::before {
+  transform: translateX(26px);
+  background-color: #ffffff; /* Brighten knob when ON */
+}
+
+/* Minimalist Button Style */
+.btn-minimal {
+  background-color: transparent;
+  color: #d4a574; /* Using your accent color */
+  border: 1px solid #d4a574;
+  padding: 10px 24px;
+  border-radius: 30px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.btn-minimal:hover {
+  background-color: #d4a574;
+  color: #000000;
+  box-shadow: 0 0 15px rgba(212, 165, 116, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Dropdown Form Modal */
+.dropdown-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: #2d2d2d;
+  border-radius: 0 0 24px 24px;
+  padding: 20px 24px 30px;
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  transform: translateY(-100%);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-modal.show {
+  transform: translateY(0);
+}
+
+.dropdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+.dropdown-overlay.show {
+  opacity: 1;
+  pointer-events: all;
+}
+
+
+.modal-content {
+    background-color: #0b0e14;
+    border: none;
+    border-radius: 20px;
+    color: white;
+    margin: 0;
+    padding: 0;
+}
+
+.modal-header, .modal-footer {
+    border: none;
+}
+
+.btn-link-gold{
+  background: linear-gradient(135deg, #4a3d5c 0%, #3a2d4c 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 700;
+    width: 100%;
+    margin-bottom: 10px;
+}
+.btn-link-gold:hover{
+  color: #64748b;
+    transition: 0.4s;
+}
+.edit-pet-modal-wrapper .modal-content {
+    background-color: #0b0e14;
+}
+.edit-pet-modal {
+    background-color: #0b0e14;
+    padding-right: 25px;
+    padding-left: 25px;
+    padding-bottom: 25px;
+    border-radius: 20px;
+}
+
+.modal-header-custom {
+    magrgin-top:0;
+    padding:0;
+    margin-bottom: 30px;
+    position: relative;   
+}
+
+.modal-header-custom::after {
+    content: "";
+    position: absolute;
+    bottom: -15px;       /* Adjust this to move the line up or down */
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(
+        to right, 
+        transparent 0%, 
+        #4b5563 50%,     /* Slightly lighter than #1f2937 so it's visible on #2d2d2d */
+        transparent 100%
+    );
+}
+
+
+.modal-header-custom h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+}
+
+.close-modal-btn {
+    background: #1e2530;
+    border: none;
+    color: white;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    font-size: 20px;
+}
+
+.time-input-dark {
+    background: #161b22 !important;
+    border: 1px solid #30363d !important;
+    color: white !important;
+    border-radius: 12px;
+    padding: 12px !important;
+}
+
+.sound-selector-group .shiny-options-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.sound-selector-group .radio-inline {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.sound-selector-group span {
+    display: block;
+    background: #1e2530; /* Darker gray from your sample */
+    color: #94a3b8;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.3s;
+  
+}
+.sound-selector-group span:hover{
+  background: linear-gradient(135deg, #4a3d5c 0%, #3a2d4c 100%);
+  transition: 0.3s
+}
+
+.sound-selector-group input[type="radio"]:checked + span {
+    background: linear-gradient(135deg, #4a3d5c 0%, #3a2d4c 100%);
+    color: white;
+}
+
+.sound-selector-group input[type="radio"] {
+    display: none; /* Hide the circle */
+}
+
+/* Footer Buttons */
+.btn-delete-alarm {
+    color: #64748b;
+    background: transparent;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 700;
+}
+.btn-delete-alarm:hover{
+    background: #1e2530; 
+    color: #64748b;
+    transition: 0.4s;
+}
+
+.btn-dismiss{
+    color: #64748b;
+    background: transparent;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 700;
+    
+}
+.btn-dismiss:hover{
+    background: #1e2530; 
+    color: #64748b;
+    transition: 0.4s;
+}
+.btn-apply-changes {
+    background: linear-gradient(135deg, #4a3d5c 0%, #3a2d4c 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 700;
+}
+.btn-apply-changes:hover{
+  color:#94a3b8;
+  transition: 0.3s;
+}
+/* Setting Row (Toggle Section) */
+.settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #161b22;
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+}
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.form-header h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+}
+
+.cancel-btn, .save-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  font-family: 'Montserrat', sans-serif;
+  transition: opacity 0.3s;
+}
+
+.cancel-btn {
+  color: #d4a574;
+}
+
+.save-btn {
+  color: #d4a574;
+}
+
+.cancel-btn:hover, .save-btn:hover {
+  opacity: 0.8;
+}
+
+.form-group {
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+/* Container for the tags */
+.time-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* The actual "Pill" style */
+.added-time-pill {
+  background-color: #4a3d5c; /* Purple to match your theme */
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  border: 1px solid #6a5d7c;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.pill-text {
+  font-size: 13px;
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+#otherTypeDiv .form-control {
+    border: 1px dashed #4a3d5c;
+    background-color: #333333;
+    transition: all 0.3s ease;
+}
+
+#otherTypeDiv .form-control:focus {
+    border-color: #d4a574;
+}
+
+/* Responsive Grid for Pet Type */
+.pet-type-selector .shiny-options-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+
+.pet-type-selector .radio-inline {
+  flex: 1;
+  min-width: 100px; /* Forces wrap on very small screens */
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.pet-type-selector .radio-inline span {
+  display: block;
+  background: #3d3d3d;
+  color: #fff;
+  padding: 12px 5px;
+  text-align: center;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Hide the actual radio circle */
+.pet-type-selector input[type="radio"] {
+  display: none;
+}
+
+/* Style for the SELECTED state */
+.pet-type-selector input[type="radio"]:checked + span {
+  background: linear-gradient(135deg, #4a3d5c 0%, #3a2d4c 100%);
+  border-color: #d4a574;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+/* "Others" Input Styling */
+.other-input-wrapper {
+  margin-top: 15px;
+  animation: slideDown 0.4s ease-out;
+}
+
+.other-input-wrapper .form-control {
+  border: 1px dashed #d4a574 !important;
+  background: #2a2a2a !important;
+  font-style: italic;
+}
+
+/* Media Query for Large Screens */
+@media (min-width: 768px) {
+  .pet-type-selector .radio-inline span {
+    font-size: 16px;
+    padding: 15px 10px;
+  }
+  .main-container {
+    width: 90%;
+    padding: 40px 0px;
+  }
+  .empty-state-container {
+    padding: 80px 40px; /* Larger padding for desktop */
+  }
+  .empty-icon {
+    font-size: 50px;
+  }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.remove-pill-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  line-height: 1;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.remove-pill-btn:hover {
+  background: #ff6b6b;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.form-group label {
+  color: #999999;
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 8px;
+  display: block;
+  font-family: 'Montserrat', sans-serif;
+}
+.shiny-input-container {
+  width: 100% !important;
+  margin-bottom: 0px !important;
+}
+
+
+.form-group .form-control{
+  width: 100%;
+  padding: 14px 16px;
+  background-color: #3d3d3d;
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+  font-family: 'Montserrat', sans-serif;
+}
+.form-group input:focus {
+  outline: 2px solid #5a4f6c;
+  background-color: #3d3d3d;
+}
+
+::placeholder {
+  color: #666666 !important;
+  opacity: 1; /* Firefox */
+  font-style: italic;
+}
+
+:-ms-input-placeholder { /* Internet Explorer 10-11 */
+  color: #666666 !important;
+}
+
+::-ms-input-placeholder { /* Microsoft Edge */
+  color: #666666 !important;
+}
+
+.form-group input::placeholder {
+  color: #666666;
+}
+
+/* Radio Buttons for Pet Type */
+.radio-group {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.radio-option {
+  flex: 1; /* Each option takes equal width */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0; /* Prevent overflow */
+}
+
+.shiny-options-group {
+  width: 100%;
+  display: flex;
+  gap: 16px;
+}
+
+.radio-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  margin: 0;
+  accent-color: #ffffff;
+  flex-shrink: 0; /* Prevent the circle from shrinking */
+}
+
+.radio-option label {
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+  cursor: pointer;
+  font-family: 'Montserrat', sans-serif;
+  white-space: nowrap; /* Keep label text on one line */
+}
+
+
+/* Feeding Time Section */
+.time-input-wrapper {
+  margin-top: 10px;
+}
+
+/* Base Card Body Style */
+.pet-card-body {
+  background: #2a2a2a;
+  padding: 20px;
+  border-radius: 15px;
+  border-left: 5px solid #555; /* Default Inactive */
+  cursor: pointer;
+  transition: all 0.4s ease; /* Smooth transition for everything */
+}
+.pet-card-body h4 {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.2px;
+}
+/* Active State Styles */
+.alarm-active .pet-card-body {
+  border-left-color: #4a3d5c;
+}
+.feed-time-text {
+  font-family: 'Inter', sans-serif;
+  margin: 0 !important;   
+  padding: 0 !important;  
+  display: block;         
+  text-align: left;      
+  color: #666;            
+  font-weight: 600;
+  font-size: 12px;
+  transition: color 0.4s ease; /* Keeps your smooth real-time transition */
+}
+.alarm-active .feed-time-text {
+  color: #d4a574;
+  font-weight: 600;
+  transition: color 0.4s ease;
+}
+
+/* Inactive State Styles */
+.alarm-inactive .feed-time-text {
+  color: #666;
+  font-weight: 600;
+  transition: color 0.4s ease;
+}
+
+.add-time-btn {
+  width: 100%;
+  background-color: #4a3d5c;
+  color: #ffffff;
+  border: none;
+  padding: 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 10px;
+  font-family: 'Montserrat', sans-serif;
+  transition: all 0.3s;
+}
+
+.add-time-btn:hover {
+  background-color: #5a4f6c;
+}
+
+.time-list {
+  margin-top: 12px;
+}
+
+.time-item {
+  background-color: #3d3d3d;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.time-item span {
+  color: #e0e0e0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.remove-time-btn {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 0 5px;
+  line-height: 1;
+}
+
+.remove-time-btn:hover {
+  color: #ff5252;
+}
+
+.time-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  animation: fadeIn 0.3s ease;
+}
+
+.btn-remove-time {
+  background: rgba(255, 77, 77, 0.1);
+  color: #ff4d4d;
+  border: 1px solid #ff4d4d;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-remove-time:hover {
+  background: #ff4d4d
+}
+
+/* Minimal Logout Button */
+.btn-logout-minimal {
+    background-color: transparent;
+    color: #a1a1aa; /* Muted grey */
+    border: 1px solid #3f3f46;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-right: 10px;
+    transition: all 0.2s ease;
+}
+
+.btn-logout-minimal:hover {
+    background-color: rgba(255, 99, 71, 0.1); /* Subtle red tint */
+    color: #ef4444; /* Soft red text */
+    border-color: #ef4444;
+}
+
+/* Flexbox fix for the header buttons */
+.header-buttons {
+    display: flex;
+    align-items: center;
+}
