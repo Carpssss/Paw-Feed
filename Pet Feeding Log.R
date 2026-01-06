@@ -14,6 +14,7 @@ pool <- dbPool(
   user   = Sys.getenv("DB_USER"),
   password = Sys.getenv("DB_PASS"),
   port = as.numeric(Sys.getenv("DB_PORT"))
+  client.flag = 2048
 )
 
 onStop(function() {
