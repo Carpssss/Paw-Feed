@@ -173,10 +173,6 @@ pool <- tryCatch({
 
   onStop(function() { if (!is.null(pool)) poolClose(pool) })
 
-  output$db_status <- renderText({
-    if (is.null(pool)) return("❌ Database Not Connected - Check Aiven/Render Settings")
-    "Database Ready"
-  })
   
   auth <- reactiveValues(logged_in = FALSE, user_info = NULL)
   feedingTimes <- reactiveVal(character(0))
