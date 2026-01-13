@@ -2,17 +2,19 @@
 library(shiny)
 library(shinyjs)
 library(DBI)
-library(RMySQL)
+library(RPostgres)  # Swapped from RMySQL
 library(pool)
 library(sodium)
 
 # --------------------- DATABASE CONNECTION ---------------------
+# This pulls the data from the Environment Variables you set in Render
 pool <- dbPool(
-  RMySQL::MySQL(),
-  dbname = "pet_feeding_db",
-  host = "localhost",
-  user = "root",
-  password = "Jamil123#"
+  RPostgres::Postgres(),
+  hostname = Sys.getenv("DB_HOST"),  # Uses 'dpg-...-a' on Render
+  port     = as.integer(Sys.getenv("DB_PORT")),
+  dbname   = Sys.getenv("DB_NAME"),
+  user     = Sys.getenv("DB_USER"),
+  password = Sys.getenv("DB_PASS")
 )
 
 onStop(function() {
