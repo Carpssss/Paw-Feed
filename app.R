@@ -17,13 +17,11 @@ pool <- tryCatch({
     dbname   = Sys.getenv("DB_NAME"),
     user     = Sys.getenv("DB_USER"),
     password = Sys.getenv("DB_PASS"),
-    sslmode  = "require"
   )
 }, error = function(e) {
-  # This will print to the Render Log so we can see what happened
-  message("❌ CRITICAL DATABASE CONNECTION ERROR:")
-  message(e$message)
-  stop("Application failed to connect to the database. Check logs.")
+# This prints the REAL error to the logs if it crashes
+  print(paste("❌ DB CONNECT ERROR:", e$message))
+  stop(e$message)
 })
 
 # --------------------- AUTO-INITIALIZATION (The Fix) ---------------------
