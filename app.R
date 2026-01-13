@@ -756,7 +756,7 @@ server <- function(input, output, session) {
         dbQuoteString(con, final_pet_type),
         as.integer(input$petAge)
       ))
-      new_id <- as.numeric(dbGetQuery(con, "SELECT LAST_INSERT_ID() AS id")$id[1])
+      new_id <- as.numeric(dbGetQuery(con, "SELECT lastval()")$lastval[1])
       for (t in sched_times) {
         dbExecute(con, sprintf(
           "INSERT INTO feeding_schedules (pet_id, feed_time) VALUES (%d, %s)",
