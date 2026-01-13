@@ -1,3 +1,4 @@
+options(shiny.sanitize.errors = FALSE)
 # --------------------- LIBRARIES ---------------------
 library(shiny)
 library(shinyjs)
@@ -8,15 +9,22 @@ library(sodium)
 
 # --------------------- DATABASE CONNECTION ---------------------
 # Connect to the Render Database using Environment Variables
-pool <- dbPool(
-  RPostgres::Postgres(),
-  host     = Sys.getenv("DB_HOST"),  # Internal Render address (ends in -a)
-  port     = as.integer(Sys.getenv("DB_PORT")),
-  dbname   = Sys.getenv("DB_NAME"),
-  user     = Sys.getenv("DB_USER"),
-  password = Sys.getenv("DB_PASS"),
-  sslmode  = "require"
-)
+pool <- tryCatch({
+  dbPool(
+    RPostgres::Postgres(),
+    host     = Sys.getenv("DB_HOST"), 
+    port     = as.integer(Sys.getenv("DB_PORT")),
+    dbname   = Sys.getenv("DB_NAME"),
+    user     = Sys.getenv("DB_USER"),
+    password = Sys.getenv("DB_PASS"),
+    sslmode  = "require"
+  )
+}, error = function(e) {
+  # This will print to the Render Log so we can see what happened
+  message("❌ CRITICAL DATABASE CONNECTION ERROR:")
+  message(e$message)
+  stop("Application failed to connect to the database. Check logs.")
+})
 
 # --------------------- AUTO-INITIALIZATION (The Fix) ---------------------
 # This runs once when the app starts. It creates tables if they are missing.
