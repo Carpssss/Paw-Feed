@@ -2,25 +2,81 @@
 library(shiny)
 library(shinyjs)
 library(DBI)
-library(RPostgres)  # Swapped from RMySQL
+library(RPostgres) 
 library(pool)
 library(sodium)
 
 # --------------------- DATABASE CONNECTION ---------------------
-# This pulls the data from the Environment Variables you set in Render
+# Connect to the Render Database using Environment Variables
 pool <- dbPool(
   RPostgres::Postgres(),
-  hostname = Sys.getenv("DB_HOST"),  # Uses 'dpg-...-a' on Render
+  host     = Sys.getenv("DB_HOST"),  # Internal Render address (ends in -a)
   port     = as.integer(Sys.getenv("DB_PORT")),
   dbname   = Sys.getenv("DB_NAME"),
   user     = Sys.getenv("DB_USER"),
-  password = Sys.getenv("DB_PASS")
+  password = Sys.getenv("DB_PASS"),
+  sslmode  = "require"
 )
 
+# --------------------- AUTO-INITIALIZATION (The Fix) ---------------------
+# This runs once when the app starts. It creates tables if they are missing.
+# We wrap it in a tryCatch to log errors to the Render console.
+
+tryCatch({
+  message("🔄 Checking database tables...")
+  
+  # 1. Create Users Table (Note: SERIAL instead of AUTO_INCREMENT)
+  dbExecute(pool, "
+    CREATE TABLE IF NOT EXISTS users (
+      user_id SERIAL PRIMARY KEY,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      password_hash VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  ")
+  
+  # 2. Create Pets Table
+  dbExecute(pool, "
+    CREATE TABLE IF NOT EXISTS pets (
+      pet_id SERIAL PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      type VARCHAR(50),
+      age INT
+    );
+  ")
+  
+  # 3. Create Feeding Schedules Table
+  dbExecute(pool, "
+    CREATE TABLE IF NOT EXISTS feeding_schedules (
+      sched_id SERIAL PRIMARY KEY,
+      pet_id INT,
+      feed_time TIME NOT NULL,
+      is_active BOOLEAN DEFAULT TRUE,
+      repeat_daily BOOLEAN DEFAULT TRUE,
+      sound_type VARCHAR(50) DEFAULT 'default_beep',
+      FOREIGN KEY (pet_id) REFERENCES pets(pet_id) ON DELETE CASCADE
+    );
+  ")
+  
+  # 4. Insert Initial User (Postgres 'ON CONFLICT' syntax)
+  # This inserts your admin user safely. If they exist, it does nothing.
+  dbExecute(pool, "
+    INSERT INTO users (email, password_hash) 
+    VALUES ('jamilaaronguerta@gmail.com', '$2y$12$6K0GjOubUqV0K.8v6vWzE.U7G1q.qHqE.8v6vWzE.U7G1q.qHqE.')
+    ON CONFLICT (email) DO NOTHING;
+  ")
+  
+  message("✅ Database initialization successful!")
+  
+}, error = function(e) {
+  message("❌ Database Initialization Failed:")
+  message(e$message)
+})
+
+# --------------------- APP LOGIC ---------------------
 onStop(function() {
   poolClose(pool)
 })
-
 # --------------------- 1. LOGIN UI ---------------------
 login_ui <- div(
   class = "login-container",
