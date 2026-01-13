@@ -5,7 +5,7 @@ library(shinyjs)
 library(DBI)
 library(RPostgres) 
 library(pool)
-library(sodium)
+#library(sodium)
 
 # --------------------- DATABASE CONNECTION ---------------------
 # Connect to the Render Database using Environment Variables
@@ -88,9 +88,9 @@ tryCatch({
   
   dbExecute(pool, sprintf("
     INSERT INTO users (email, password_hash) 
-    VALUES ('jamilaaronguerta@gmail.com', %s)
+    VALUES ('jamilaaronguerta@gmail.com', 'your_actual_password_here')
     ON CONFLICT (email) DO NOTHING;
-  ", dbQuoteString(pool, password_hash)))
+  "))
   
   message("✅ Database initialization successful!")
   
@@ -382,34 +382,28 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$login_btn, {
-  req(input$user_email, input$user_password)
-  
-  user_query <- dbGetQuery(pool, sprintf(
-    "SELECT * FROM users WHERE email = %s", 
-    dbQuoteString(pool, input$user_email)
-  ))
-  
-  if (nrow(user_query) == 1) {
-    # FIXED: Use sodium::password_verify instead of password_verify
-    password_valid <- tryCatch({
-      sodium::password_verify(user_query$password_hash, input$user_password)
-    }, error = function(e) {
-      message("Password verification error: ", e$message)
-      FALSE
-    })
+    req(input$user_email, input$user_password)
     
-    if (password_valid) {
-      auth$logged_in <- TRUE
-      auth$user_info <- user_query
-      session$sendCustomMessage("setCookie", list(name = "pawfeed_user", value = input$user_email))
-      showNotification("Welcome back!", type = "message")
+    user_query <- dbGetQuery(pool, sprintf(
+      "SELECT * FROM users WHERE email = %s", 
+      dbQuoteString(pool, input$user_email)
+    ))
+    
+    if (nrow(user_query) == 1) {
+      # --- CHANGED: Plain text check instead of sodium ---
+      # We check if the database password matches the input exactly
+      if (user_query$password_hash == input$user_password) {
+        auth$logged_in <- TRUE
+        auth$user_info <- user_query
+        session$sendCustomMessage("setCookie", list(name = "pawfeed_user", value = input$user_email))
+        showNotification("Welcome back!", type = "message")
+      } else {
+        showNotification("Invalid password", type = "error")
+      }
     } else {
-      showNotification("Invalid password", type = "error")
+      showNotification("User not found", type = "error")
     }
-  } else {
-    showNotification("User not found", type = "error")
-  }
-})
+  })
   
   observeEvent(input$logout_btn, {
     auth$logged_in <- FALSE
