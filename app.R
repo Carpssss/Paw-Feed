@@ -84,7 +84,6 @@ tryCatch({
   # 4. Insert Initial User with proper password hashing
   # Generate password hash using sodium
   test_password <- "your_secure_password"  # Change this!
-  password_hash <- sodium::password_store(test_password)
   
   dbExecute(pool, sprintf("
     INSERT INTO users (email, password_hash) 
