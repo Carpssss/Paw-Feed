@@ -41,9 +41,7 @@ login_ui <- div(
 )
 
 # --------------------- 2. DASHBOARD UI ---------------------
-# This includes the main layout AND the "Add Pet" dropdown form
 dashboard_ui <- tagList(
-  # Dropdown Form Modal (Moved here so it's part of the dashboard session)
   div(id = "dropdownModal", class = "dropdown-modal",
       div(class = "form-header",
           div(class = "form-actions", actionButton("cancelForm", "Cancel", class = "cancel-btn")),
@@ -96,7 +94,6 @@ dashboard_ui <- tagList(
       )
   ),
   
-  # Main Dashboard Layout
   div(class = "main-container",
       div(class = "header-wrapper",
           div(class = "header",
@@ -107,10 +104,11 @@ dashboard_ui <- tagList(
                       span(class = "tagline", "Where Care Meets Time") 
                   )
               ),
-              # Wrap buttons in a container for the flex layout
               div(class = "header-buttons",
                   actionButton("logout_btn", "Logout", class = "btn-logout-minimal"),
-                  actionButton("add_pet_header", "Add Pet +", class = "add-pet-header-btn")
+                  actionButton("add_pet_header", "Add Pet +", class = "add-pet-header-btn"),
+                  actionButton("install_pwa", "📱 Install App", class = "btn-install", 
+                               id = "installBtn", style = "display: none;")
               )
           )
       ),
@@ -123,10 +121,31 @@ ui <- fluidPage(
   useShinyjs(),
   includeCSS("www/fone.css"),
   
-  # Global assets and scripts
   div(id = "dropdownOverlay", class = "dropdown-overlay"),
   
   tags$script(HTML("
+    var alarmAudio = null;
+    var deferredPrompt = null;
+    
+    // PWA Install Detection
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('installBtn').style.display = 'block';
+    });
+    
+    // Register Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => console.log('Service Worker registered'))
+        .catch(err => console.log('Service Worker registration failed:', err));
+    }
+    
+    // Request Notification Permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    
     function updateCardStyle(petId, isChecked) {
       var card = document.getElementById('card_' + petId);
       if (card) {
@@ -139,9 +158,78 @@ ui <- fluidPage(
         }
       }
     }
+    
+    function playAlarmSound(soundType) {
+      if (alarmAudio) {
+        alarmAudio.pause();
+        alarmAudio = null;
+      }
+      
+      var soundFile = 'default_beep.mp3';
+      if (soundType === 'chime') soundFile = 'chime.mp3';
+      else if (soundType === 'bark') soundFile = 'bark.mp3';
+      else if (soundType === 'meow') soundFile = 'meow.mp3';
+      else if (soundType === 'birds') soundFile = 'birds.mp3';
+      
+      alarmAudio = new Audio(soundFile);
+      alarmAudio.loop = true;
+      alarmAudio.play().catch(function(error) {
+        console.log('Audio playback failed:', error);
+      });
+    }
+    
+    function stopAlarmSound() {
+      if (alarmAudio) {
+        alarmAudio.pause();
+        alarmAudio.currentTime = 0;
+        alarmAudio = null;
+      }
+    }
+    
+    // Install PWA function
+    function installPWA() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+          if (choiceResult.outcome === 'accepted') {
+            console.log('PWA installed');
+            document.getElementById('installBtn').style.display = 'none';
+          }
+          deferredPrompt = null;
+        });
+      }
+    }
+    
+    Shiny.addCustomMessageHandler('playAlarm', function(data) {
+      playAlarmSound(data.sound);
+      
+      // Send browser notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('🔔 Feeding Time!', {
+          body: data.petName + ' is hungry!',
+          icon: 'icon-192.png',
+          badge: 'icon-192.png',
+          tag: 'feeding-alarm',
+          requireInteraction: true
+        });
+      }
+    });
+    
+    Shiny.addCustomMessageHandler('stopAlarm', function(message) {
+      stopAlarmSound();
+    });
+    
+    Shiny.addCustomMessageHandler('updateBadge', function(count) {
+      if ('setAppBadge' in navigator) {
+        if (count > 0) {
+          navigator.setAppBadge(count);
+        } else {
+          navigator.clearAppBadge();
+        }
+      }
+    });
 
     Shiny.addCustomMessageHandler('setCookie', function(data) {
-      // Use backticks or escaped quotes to be safe
       document.cookie = data.name + '=' + data.value + '; path=/; max-age=86400';
     });
 
@@ -158,7 +246,6 @@ ui <- fluidPage(
     });
   ")),
   
-  # The dynamic content area
   uiOutput("page_content")
 )
 
@@ -166,9 +253,17 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   auth <- reactiveValues(logged_in = FALSE, user_info = NULL)
   feedingTimes <- reactiveVal(character(0))
-  refreshTrigger <- reactiveVal(0) 
+  refreshTrigger <- reactiveVal(0)
+  lastAlarmCheck <- reactiveVal(NULL)
+  # NEW: Store temporary edit modal data
+  editModalData <- reactiveValues(
+    pet_id = NULL,
+    pet_name = NULL,
+    times = list(),
+    deleted_schedules = c(),
+    new_times = c()
+  )
   
-  # 2. AUTO-LOGIN HANDSHAKE (Laps up the cookie from JS)
   observeEvent(input$cookie_login, {
     req(input$cookie_login)
     user_query <- dbGetQuery(pool, sprintf(
@@ -193,27 +288,14 @@ server <- function(input, output, session) {
   
   output$page_content <- renderUI({
     if (is.na(auth$logged_in)) {
-      # 1. State: Checking (Show a blank dark screen or spinner)
       return(div(class = "loading-screen", div(class = "loader")))
     } else if (auth$logged_in == FALSE) {
-      # 2. State: Logged Out
-      return(login_ui)
-    } else {
-      # 3. State: Logged In
-      return(dashboard_ui)
-    }
-  })
-  
-  # 3. PAGE SWITCHER
-  output$page_content <- renderUI({
-    if (!auth$logged_in) {
       return(login_ui)
     } else {
       return(dashboard_ui)
     }
   })
   
-  # 4. MANUAL LOGIN LOGIC
   observeEvent(input$login_btn, {
     req(input$user_email, input$user_password)
     
@@ -226,8 +308,6 @@ server <- function(input, output, session) {
       if (password_verify(user_query$password_hash, input$user_password)) {
         auth$logged_in <- TRUE
         auth$user_info <- user_query
-        
-        # Save Cookie
         session$sendCustomMessage("setCookie", list(name = "pawfeed_user", value = input$user_email))
         showNotification("Welcome back!", type = "message")
       } else {
@@ -238,19 +318,13 @@ server <- function(input, output, session) {
     }
   })
   
-  # 5. LOGOUT LOGIC
   observeEvent(input$logout_btn, {
     auth$logged_in <- FALSE
     auth$user_info <- NULL
     session$sendCustomMessage("clearCookie", "pawfeed_user")
     showNotification("Logged out", type = "message")
   })
-#---------------------------------------------------------
   
-  feedingTimes <- reactiveVal(character(0))
-  refreshTrigger <- reactiveVal(0) 
-  
-  # --- DYNAMIC PET TYPE LOGIC ---
   observeEvent(input$petType, {
     req(input$petType)
     if (input$petType == "others") {
@@ -261,13 +335,11 @@ server <- function(input, output, session) {
     }
   })
   
-  # --- FORM VISIBILITY ---
   observeEvent(input$add_pet_header, {
     addClass("dropdownModal", "show")
     addClass("dropdownOverlay", "show")
   })
   
-  # --- ADD TIME LOGIC ---
   observeEvent(input$addTime, {
     runjs('Shiny.setInputValue("lastTimeAdded", document.getElementById("feedingTimeInput").value, {priority: "event"});')
   })
@@ -311,7 +383,25 @@ server <- function(input, output, session) {
         LEFT JOIN feeding_schedules s ON p.pet_id = s.pet_id 
         WHERE p.pet_id = %d", pet_id))
     
-    req(nrow(pet_data) > 0) 
+    req(nrow(pet_data) > 0)
+    
+    # Initialize edit modal data
+    editModalData$pet_id <- pet_id
+    editModalData$pet_name <- pet_data$name[1]
+    editModalData$deleted_schedules <- c()
+    editModalData$new_times <- c()
+    
+    # Store existing times with their schedule IDs
+    editModalData$times <- list()
+    if (!is.na(pet_data$sched_id[1])) {
+      for (i in 1:nrow(pet_data)) {
+        editModalData$times[[as.character(pet_data$sched_id[i])]] <- list(
+          sched_id = pet_data$sched_id[i],
+          feed_time = pet_data$feed_time[i]
+        )
+      }
+    }
+    
     has_schedules <- !is.na(pet_data$sched_id[1])
     is_repeating <- if(has_schedules) as.logical(pet_data$repeat_daily[1]) else FALSE
     current_sound <- if(has_schedules) pet_data$sound_type[1] else "beep"
@@ -336,10 +426,11 @@ server <- function(input, output, session) {
                         lapply(1:nrow(pet_data), function(i) {
                           div(class = "time-edit-row", id = paste0("row_", pet_data$sched_id[i]),
                               tags$input(type = "time", class = "form-control time-input-dark", 
+                                         id = paste0("time_", pet_data$sched_id[i]),
                                          value = pet_data$feed_time[i]),
                               actionButton(paste0("del_ui_", pet_data$sched_id[i]), "×", 
                                            class = "btn-remove-time",
-                                           onclick = sprintf("Shiny.setInputValue('deleteScheduleId', %d, {priority: 'event'})", 
+                                           onclick = sprintf("Shiny.setInputValue('markScheduleForDeletion', %d, {priority: 'event'})", 
                                                              pet_data$sched_id[i]))
                           )
                         })
@@ -347,6 +438,7 @@ server <- function(input, output, session) {
                         p(style="color:#666; font-style:italic;", "No schedules found. Add one below.")
                       }
                   ),
+                  tags$input(type = "time", id = "newTimeInput", class = "form-control time-input-dark", style = "margin-top: 10px;"),
                   actionButton("addMoreTimeEdit", "+ Add Time", class = "btn-link-gold", style = "margin-bottom:25px")
               ),
               
@@ -390,25 +482,140 @@ server <- function(input, output, session) {
     ))
   })
   
-  # --- SAVE MODAL SETTINGS ---
+  # --- ADD TIME IN EDIT MODAL (Only add to UI, not DB yet) ---
+  observeEvent(input$addMoreTimeEdit, {
+    new_time <- NULL
+    runjs('
+      var timeVal = document.getElementById("newTimeInput").value;
+      if (timeVal) {
+        Shiny.setInputValue("newTimeFromModal", timeVal, {priority: "event"});
+        document.getElementById("newTimeInput").value = "";
+      }
+    ')
+  })
+  
+  observeEvent(input$newTimeFromModal, {
+    new_time <- input$newTimeFromModal
+    req(new_time != "")
+    
+    # Add to temporary storage
+    temp_id <- paste0("new_", length(editModalData$new_times) + 1)
+    editModalData$new_times <- c(editModalData$new_times, new_time)
+    
+    displayTime <- format(as.POSIXct(paste("2024-01-01", new_time)), "%I:%M %p")
+    
+    # Add to UI only
+    insertUI(
+      selector = "#modalTimeEditor",
+      where = "beforeEnd",
+      ui = div(class = "time-edit-row", id = paste0("row_", temp_id),
+               tags$input(type = "time", class = "form-control time-input-dark", 
+                          id = paste0("time_", temp_id),
+                          value = new_time),
+               actionButton(paste0("del_ui_", temp_id), "×", 
+                            class = "btn-remove-time",
+                            onclick = sprintf("Shiny.setInputValue('removeNewTime', '%s', {priority: 'event'})", temp_id))
+      )
+    )
+  })
+  
+  # --- MARK SCHEDULE FOR DELETION (Don't delete from DB yet) ---
+  observeEvent(input$markScheduleForDeletion, {
+    sched_id <- input$markScheduleForDeletion
+    req(sched_id)
+    
+    # Add to deletion list
+    editModalData$deleted_schedules <- c(editModalData$deleted_schedules, sched_id)
+    
+    # Remove from UI
+    removeUI(selector = paste0("#row_", sched_id))
+  })
+  
+  # --- REMOVE NEW TIME (from UI only) ---
+  observeEvent(input$removeNewTime, {
+    temp_id <- input$removeNewTime
+    req(temp_id)
+    
+    # Remove from temporary storage
+    idx <- which(names(editModalData$new_times) == temp_id)
+    if (length(idx) > 0) {
+      editModalData$new_times <- editModalData$new_times[-idx]
+    }
+    
+    # Remove from UI
+    removeUI(selector = paste0("#row_", temp_id))
+  })
+  
+  # --- SAVE MODAL SETTINGS (Now saves everything at once) ---
   observeEvent(input$saveAlarmSettings, {
     req(input$targetPetId)
     
     tryCatch({
-      # Use pool as the first argument for quoting
-      quoted_sound <- dbQuoteString(pool, input$editAlarmSound)
+      con <- poolCheckout(pool)
       
-      dbExecute(pool, sprintf(
+      # 1. Update pet name if changed
+      if (input$editPetName != editModalData$pet_name) {
+        dbExecute(con, sprintf(
+          "UPDATE pets SET name = %s WHERE pet_id = %d",
+          dbQuoteString(con, input$editPetName),
+          as.integer(input$targetPetId)
+        ))
+      }
+      
+      # 2. Delete marked schedules
+      if (length(editModalData$deleted_schedules) > 0) {
+        for (sched_id in editModalData$deleted_schedules) {
+          dbExecute(con, sprintf(
+            "DELETE FROM feeding_schedules WHERE sched_id = %d", 
+            as.integer(sched_id)
+          ))
+        }
+      }
+      
+      # 3. Update existing schedule times
+      for (sched_id in names(editModalData$times)) {
+        time_input_id <- paste0("time_", sched_id)
+        new_time <- input[[time_input_id]]
+        
+        if (!is.null(new_time) && new_time != "") {
+          dbExecute(con, sprintf(
+            "UPDATE feeding_schedules SET feed_time = %s WHERE sched_id = %d",
+            dbQuoteString(con, paste0(new_time, ":00")),
+            as.integer(sched_id)
+          ))
+        }
+      }
+      
+      # 4. Insert new times
+      if (length(editModalData$new_times) > 0) {
+        for (new_time in editModalData$new_times) {
+          dbExecute(con, sprintf(
+            "INSERT INTO feeding_schedules (pet_id, feed_time, repeat_daily, sound_type, is_active) 
+             VALUES (%d, %s, %d, %s, 1)",
+            as.integer(input$targetPetId),
+            dbQuoteString(con, paste0(new_time, ":00")),
+            as.integer(input$editRepeatDaily),
+            dbQuoteString(con, input$editAlarmSound)
+          ))
+        }
+      }
+      
+      # 5. Update repeat_daily and sound_type for all schedules of this pet
+      dbExecute(con, sprintf(
         "UPDATE feeding_schedules SET repeat_daily = %d, sound_type = %s WHERE pet_id = %d",
         as.integer(input$editRepeatDaily),
-        quoted_sound,
+        dbQuoteString(con, input$editAlarmSound),
         as.integer(input$targetPetId)
       ))
       
+      poolReturn(con)
+      
       removeModal()
-      showNotification("Settings updated!", type = "message")
+      showNotification("Settings updated successfully!", type = "message")
       refreshTrigger(refreshTrigger() + 1)
+      
     }, error = function(e) {
+      if(exists("con")) poolReturn(con)
       showNotification(paste("Update Error:", e$message), type = "error")
     })
   })
@@ -421,7 +628,7 @@ server <- function(input, output, session) {
                             as.numeric(input$toggleAlarm$id)))
   })
   
-  # --- DELETE LOGIC ---
+  # --- DELETE PET ---
   observeEvent(input$deletePetConfirm, {
     pet_id <- input$deletePetConfirm
     dbExecute(pool, sprintf("DELETE FROM feeding_schedules WHERE pet_id = %d", pet_id))
@@ -429,17 +636,6 @@ server <- function(input, output, session) {
     removeModal()
     refreshTrigger(refreshTrigger() + 1)
     showNotification("Pet removed.", type = "warning")
-  })
-  
-  observeEvent(input$deleteScheduleId, {
-    sched_id <- input$deleteScheduleId
-    req(sched_id) # Ensure value exists
-    
-    dbExecute(pool, sprintf("DELETE FROM feeding_schedules WHERE sched_id = %d", sched_id))
-    removeUI(selector = paste0("#row_", sched_id))
-    
-    # Optional: check if pet has 0 schedules left and update dashboard
-    refreshTrigger(refreshTrigger() + 1) 
   })
   
   # --- SAVE NEW PET FORM ---
@@ -492,6 +688,86 @@ server <- function(input, output, session) {
     })
   })
   
+  # --- Alarm Logic ---
+  observeEvent(input$cancelForm, {
+    removeClass("dropdownModal", "show")
+    removeClass("dropdownOverlay", "show")
+  })
+  
+  
+  observe({
+    req(auth$logged_in)
+    invalidateLater(5000, session) # Check every 5 seconds
+    
+    current_time <- format(Sys.time(), "%H:%M:%S")
+    current_minute <- substr(current_time, 1, 5)
+    
+    # Prevent duplicate alarms within the same minute
+    if (!is.null(lastAlarmCheck()) && lastAlarmCheck() == current_minute) {
+      return()
+    }
+    
+    # Get all active schedules
+    active_schedules <- dbGetQuery(pool, sprintf("
+      SELECT p.pet_id, p.name, s.feed_time, s.sound_type, s.repeat_daily
+      FROM pets p
+      INNER JOIN feeding_schedules s ON p.pet_id = s.pet_id
+      WHERE s.is_active = 1
+    "))
+    
+    if (nrow(active_schedules) > 0) {
+      for (i in 1:nrow(active_schedules)) {
+        schedule_time <- substr(active_schedules$feed_time[i], 1, 5)
+        
+        if (schedule_time == current_minute) {
+          # Trigger alarm
+          pet_name <- active_schedules$name[i]
+          sound_type <- active_schedules$sound_type[i]
+          
+          # Play sound
+          session$sendCustomMessage("playAlarm", list(sound = sound_type))
+          
+          # Show modal
+          showModal(modalDialog(
+            title = NULL,
+            size = "m",
+            easyClose = FALSE,
+            div(class = "alarm-modal-content",
+                div(class = "alarm-icon", "🔔"),
+                h2(paste("Time to feed", pet_name, "!")),
+                p(class = "alarm-time", format(Sys.time(), "%I:%M %p")),
+                div(class = "alarm-actions",
+                    actionButton("dismissAlarm", "Fed ✓", class = "btn-fed"),
+                    actionButton("snoozeAlarm", "Snooze 5 min", class = "btn-snooze")
+                )
+            ),
+            footer = NULL
+          ))
+          
+          lastAlarmCheck(current_minute)
+          break # Only show one alarm at a time
+        }
+      }
+    }
+  })
+  
+  # Dismiss alarm
+  observeEvent(input$dismissAlarm, {
+    session$sendCustomMessage("stopAlarm", list())
+    removeModal()
+    showNotification("Marked as fed!", type = "message")
+  })
+  
+  # Snooze alarm
+  observeEvent(input$snoozeAlarm, {
+    session$sendCustomMessage("stopAlarm", list())
+    removeModal()
+    showNotification("Snoozed for 5 minutes", type = "message")
+    
+    # Reset alarm check to allow re-trigger in 5 minutes
+    invalidateLater(300000, session)
+    isolate({ lastAlarmCheck(NULL) })
+  })
   # --- DASHBOARD DISPLAY ---
   output$petDisplay <- renderUI({
     refreshTrigger() 
