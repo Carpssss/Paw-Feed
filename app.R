@@ -10,6 +10,21 @@ library(sodium)
 # --------------------- DATABASE CONNECTION ---------------------
 # Connect to the Render Database using Environment Variables
 pool <- tryCatch({
+  # Print environment variables for debugging (remove in production)
+  message("🔍 Checking environment variables...")
+  message(sprintf("DB_HOST: %s", Sys.getenv("DB_HOST")))
+  message(sprintf("DB_PORT: %s", Sys.getenv("DB_PORT")))
+  message(sprintf("DB_NAME: %s", Sys.getenv("DB_NAME")))
+  message(sprintf("DB_USER: %s", Sys.getenv("DB_USER")))
+  
+  # Check if required env vars are set
+  required_vars <- c("DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASS")
+  missing_vars <- required_vars[sapply(required_vars, function(v) Sys.getenv(v) == "")]
+  
+  if (length(missing_vars) > 0) {
+    stop(paste("❌ Missing environment variables:", paste(missing_vars, collapse = ", ")))
+  }
+  
   dbPool(
     RPostgres::Postgres(),
     host     = Sys.getenv("DB_HOST"), 
@@ -17,10 +32,12 @@ pool <- tryCatch({
     dbname   = Sys.getenv("DB_NAME"),
     user     = Sys.getenv("DB_USER"),
     password = Sys.getenv("DB_PASS"),
+    minSize  = 1,
+    maxSize  = 5  # ADDED: Required for RPostgres
   )
 }, error = function(e) {
-# This prints the REAL error to the logs if it crashes
-  print(paste("❌ DB CONNECT ERROR:", e$message))
+  # This prints the REAL error to the logs if it crashes
+  message("❌ DB CONNECT ERROR:", e$message)
   stop(e$message)
 })
 
@@ -31,7 +48,7 @@ pool <- tryCatch({
 tryCatch({
   message("🔄 Checking database tables...")
   
-  # 1. Create Users Table (Note: SERIAL instead of AUTO_INCREMENT)
+  # 1. Create Users Table
   dbExecute(pool, "
     CREATE TABLE IF NOT EXISTS users (
       user_id SERIAL PRIMARY KEY,
@@ -64,19 +81,23 @@ tryCatch({
     );
   ")
   
-  # 4. Insert Initial User (Postgres 'ON CONFLICT' syntax)
-  # This inserts your admin user safely. If they exist, it does nothing.
-  dbExecute(pool, "
+  # 4. Insert Initial User with proper password hashing
+  # Generate password hash using sodium
+  test_password <- "your_secure_password"  # Change this!
+  password_hash <- sodium::password_store(test_password)
+  
+  dbExecute(pool, sprintf("
     INSERT INTO users (email, password_hash) 
-    VALUES ('jamilaaronguerta@gmail.com', '$2y$12$6K0GjOubUqV0K.8v6vWzE.U7G1q.qHqE.8v6vWzE.U7G1q.qHqE.')
+    VALUES ('jamilaaronguerta@gmail.com', %s)
     ON CONFLICT (email) DO NOTHING;
-  ")
+  ", dbQuoteString(pool, password_hash)))
   
   message("✅ Database initialization successful!")
   
 }, error = function(e) {
   message("❌ Database Initialization Failed:")
   message(e$message)
+  stop(e$message)  # Stop app if tables can't be created
 })
 
 # --------------------- APP LOGIC ---------------------
@@ -361,26 +382,34 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$login_btn, {
-    req(input$user_email, input$user_password)
+  req(input$user_email, input$user_password)
+  
+  user_query <- dbGetQuery(pool, sprintf(
+    "SELECT * FROM users WHERE email = %s", 
+    dbQuoteString(pool, input$user_email)
+  ))
+  
+  if (nrow(user_query) == 1) {
+    # FIXED: Use sodium::password_verify instead of password_verify
+    password_valid <- tryCatch({
+      sodium::password_verify(user_query$password_hash, input$user_password)
+    }, error = function(e) {
+      message("Password verification error: ", e$message)
+      FALSE
+    })
     
-    user_query <- dbGetQuery(pool, sprintf(
-      "SELECT * FROM users WHERE email = %s", 
-      dbQuoteString(pool, input$user_email)
-    ))
-    
-    if (nrow(user_query) == 1) {
-      if (password_verify(user_query$password_hash, input$user_password)) {
-        auth$logged_in <- TRUE
-        auth$user_info <- user_query
-        session$sendCustomMessage("setCookie", list(name = "pawfeed_user", value = input$user_email))
-        showNotification("Welcome back!", type = "message")
-      } else {
-        showNotification("Invalid password", type = "error")
-      }
+    if (password_valid) {
+      auth$logged_in <- TRUE
+      auth$user_info <- user_query
+      session$sendCustomMessage("setCookie", list(name = "pawfeed_user", value = input$user_email))
+      showNotification("Welcome back!", type = "message")
     } else {
-      showNotification("User not found", type = "error")
+      showNotification("Invalid password", type = "error")
     }
-  })
+  } else {
+    showNotification("User not found", type = "error")
+  }
+})
   
   observeEvent(input$logout_btn, {
     auth$logged_in <- FALSE
