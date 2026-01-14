@@ -371,29 +371,40 @@ server <- function(input, output, session) {
     }
   })
   
-  observeEvent(input$login_btn, {
-    req(input$user_email, input$user_password)
-    
-    user_query <- dbGetQuery(pool, sprintf(
+ observeEvent(input$login_btn, {
+  # 1. First, check if the database even connected
+  if (is.null(pool)) {
+    showNotification("❌ Database connection is not available. Check Render logs.", type = "error")
+    return()
+  }
+  
+  req(input$user_email, input$user_password)
+  
+  # 2. Wrap the query in tryCatch to prevent "Disconnected" on SQL errors
+  user_query <- tryCatch({
+    dbGetQuery(pool, sprintf(
       "SELECT * FROM users WHERE email = %s", 
       dbQuoteString(pool, input$user_email)
     ))
-    
-    if (nrow(user_query) == 1) {
-      # --- CHANGED: Plain text check instead of sodium ---
-      # We check if the database password matches the input exactly
-      if (user_query$password_hash == input$user_password) {
-        auth$logged_in <- TRUE
-        auth$user_info <- user_query
-        session$sendCustomMessage("setCookie", list(name = "pawfeed_user", value = input$user_email))
-        showNotification("Welcome back!", type = "message")
-      } else {
-        showNotification("Invalid password", type = "error")
-      }
-    } else {
-      showNotification("User not found", type = "error")
-    }
+  }, error = function(e) {
+    message("Login Query Error: ", e$message)
+    return(NULL)
   })
+  
+  # 3. Handle the login result
+  if (!is.null(user_query) && nrow(user_query) == 1) {
+    if (user_query$password_hash == input$user_password) {
+      auth$logged_in <- TRUE
+      auth$user_info <- user_query
+      session$sendCustomMessage("setCookie", list(name = "pawfeed_user", value = input$user_email))
+      showNotification("Welcome back!", type = "message")
+    } else {
+      showNotification("Invalid password", type = "error")
+    }
+  } else {
+    showNotification("User not found or database error", type = "error")
+  }
+})
   
   observeEvent(input$logout_btn, {
     auth$logged_in <- FALSE
