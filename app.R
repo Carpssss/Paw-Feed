@@ -12,20 +12,16 @@ library(pool)
 pool <- tryCatch({
   dbPool(
     RPostgres::Postgres(),
-    host     = Sys.getenv("DB_HOST"), 
+    host     = Sys.getenv("DB_HOST"),
     port     = as.integer(Sys.getenv("DB_PORT")),
     dbname   = Sys.getenv("DB_NAME"),
     user     = Sys.getenv("DB_USER"),
     password = Sys.getenv("DB_PASS"),
-    # ADD THESE THREE LINES FOR STABILITY:
-    connect_timeout = 10,
-    bigint = "integer",
-    sslmode = "disable" # For internal host (ends in -a), use 'disable' or omit
+    connect_timeout = 15
   )
 }, error = function(e) {
-  message("❌ CRITICAL CONNECTION ERROR: ", e$message)
-  # Instead of stop(), we let the app live so it can show the error UI
-  startup_error <<- paste("Database Connection Failed:", e$message)
+  # This will overwrite the "not available" message with the ACTUAL error
+  startup_error <<- paste("❌ SQL ERROR:", e$message)
   NULL
 })
 
