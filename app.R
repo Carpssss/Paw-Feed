@@ -10,17 +10,6 @@ library(pool)
 
 # --------------------- DATABASE CONNECTION ---------------------
 pool <- tryCatch({
-  # Print environment variables for debugging
-  message("🔍 Checking environment variables...")
-  
-  # Check if required env vars are set
-  required_vars <- c("DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASS")
-  missing_vars <- required_vars[sapply(required_vars, function(v) Sys.getenv(v) == "")]
-  
-  if (length(missing_vars) > 0) {
-    stop(paste("❌ Missing environment variables:", paste(missing_vars, collapse = ", ")))
-  }
-  
   dbPool(
     RPostgres::Postgres(),
     host     = Sys.getenv("DB_HOST"), 
@@ -28,13 +17,16 @@ pool <- tryCatch({
     dbname   = Sys.getenv("DB_NAME"),
     user     = Sys.getenv("DB_USER"),
     password = Sys.getenv("DB_PASS"),
-    # REMOVED: sslmode = "require" (Internal connections must not use this)
-    minSize  = 1,
-    maxSize  = 5
+    # ADD THESE THREE LINES FOR STABILITY:
+    connect_timeout = 10,
+    bigint = "integer",
+    sslmode = "disable" # For internal host (ends in -a), use 'disable' or omit
   )
 }, error = function(e) {
-  message("❌ DB CONNECT ERROR:", e$message)
-  stop(e$message)
+  message("❌ CRITICAL CONNECTION ERROR: ", e$message)
+  # Instead of stop(), we let the app live so it can show the error UI
+  startup_error <<- paste("Database Connection Failed:", e$message)
+  NULL
 })
 
 # --------------------- AUTO-INITIALIZATION ---------------------
