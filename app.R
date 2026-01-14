@@ -12,10 +12,14 @@ startup_error <- NULL
 
 # --------------------- DATABASE CONNECTION ---------------------
 pool <- tryCatch({
+  # Get the port, but if it's empty, use 5432 as a backup
+  port_val <- Sys.getenv("DB_PORT")
+  if (port_val == "") port_val <- "5432" 
+  
   dbPool(
     RPostgres::Postgres(),
     host     = Sys.getenv("DB_HOST"),
-    port     = as.integer(Sys.getenv("DB_PORT")),
+    port     = as.integer(port_val), # This will now be 5432 instead of NA
     dbname   = Sys.getenv("DB_NAME"),
     user     = Sys.getenv("DB_USER"),
     password = Sys.getenv("DB_PASS"),
@@ -25,7 +29,6 @@ pool <- tryCatch({
   startup_error <<- paste("❌ CONNECTION ERROR:", e$message)
   NULL
 })
-
 # --------------------- AUTO-INITIALIZATION ---------------------
 if (!is.null(pool)) {
   tryCatch({
