@@ -1,22 +1,17 @@
 options(shiny.sanitize.errors = FALSE)
-options(shiny.error = browser)
+
 # --------------------- LIBRARIES ---------------------
 library(shiny)
 library(shinyjs)
 library(DBI)
 library(RPostgres) 
 library(pool)
-#library(sodium)
+# library(sodium) # Keep this commented out
 
 # --------------------- DATABASE CONNECTION ---------------------
-# Connect to the Render Database using Environment Variables
 pool <- tryCatch({
-  # Print environment variables for debugging (remove in production)
+  # Print environment variables for debugging
   message("🔍 Checking environment variables...")
-  message(sprintf("DB_HOST: %s", Sys.getenv("DB_HOST")))
-  message(sprintf("DB_PORT: %s", Sys.getenv("DB_PORT")))
-  message(sprintf("DB_NAME: %s", Sys.getenv("DB_NAME")))
-  message(sprintf("DB_USER: %s", Sys.getenv("DB_USER")))
   
   # Check if required env vars are set
   required_vars <- c("DB_HOST", "DB_PORT", "DB_NAME", "DB_USER", "DB_PASS")
@@ -27,26 +22,22 @@ pool <- tryCatch({
   }
   
   dbPool(
-  RPostgres::Postgres(),
-  host     = Sys.getenv("DB_HOST"), 
-  port     = as.integer(Sys.getenv("DB_PORT")),
-  dbname   = Sys.getenv("DB_NAME"),
-  user     = Sys.getenv("DB_USER"),
-  password = Sys.getenv("DB_PASS"),
-  sslmode  = "require",  # ← ADD THIS LINE
-  minSize  = 1,
-  maxSize  = 5
-)
+    RPostgres::Postgres(),
+    host     = Sys.getenv("DB_HOST"), 
+    port     = as.integer(Sys.getenv("DB_PORT")),
+    dbname   = Sys.getenv("DB_NAME"),
+    user     = Sys.getenv("DB_USER"),
+    password = Sys.getenv("DB_PASS"),
+    # REMOVED: sslmode = "require" (Internal connections must not use this)
+    minSize  = 1,
+    maxSize  = 5
+  )
 }, error = function(e) {
-  # This prints the REAL error to the logs if it crashes
   message("❌ DB CONNECT ERROR:", e$message)
   stop(e$message)
 })
 
-# --------------------- AUTO-INITIALIZATION (The Fix) ---------------------
-# This runs once when the app starts. It creates tables if they are missing.
-# We wrap it in a tryCatch to log errors to the Render console.
-
+# --------------------- AUTO-INITIALIZATION ---------------------
 tryCatch({
   message("🔄 Checking database tables...")
   
@@ -83,28 +74,28 @@ tryCatch({
     );
   ")
   
-  # 4. Insert Initial User with proper password hashing
-  # Generate password hash using sodium
-  test_password <- "your_secure_password"  # Change this!
-  
-  dbExecute(pool, sprintf("
+  # 4. Insert Initial User (Fixed Syntax)
+  # We removed sprintf because we are inserting the string directly
+  dbExecute(pool, "
     INSERT INTO users (email, password_hash) 
     VALUES ('jamilaaronguerta@gmail.com', 'your_actual_password_here')
     ON CONFLICT (email) DO NOTHING;
-  "))
+  ")
   
   message("✅ Database initialization successful!")
   
 }, error = function(e) {
   message("❌ Database Initialization Failed:")
   message(e$message)
-  stop(e$message)  # Stop app if tables can't be created
+  stop(e$message) 
 })
 
 # --------------------- APP LOGIC ---------------------
 onStop(function() {
   poolClose(pool)
 })
+
+# ... PASTE THE REST OF YOUR UI AND SERVER CODE HERE ...
 # --------------------- 1. LOGIN UI ---------------------
 login_ui <- div(
   class = "login-container",
