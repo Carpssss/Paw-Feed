@@ -30,61 +30,67 @@ pool <- tryCatch({
 })
 
 # --------------------- AUTO-INITIALIZATION ---------------------
-tryCatch({
-  message("🔄 Checking database tables...")
-  
-  # 1. Create Users Table
-  dbExecute(pool, "
-    CREATE TABLE IF NOT EXISTS users (
-      user_id SERIAL PRIMARY KEY,
-      email VARCHAR(255) NOT NULL UNIQUE,
-      password_hash VARCHAR(255) NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  ")
-  
-  # 2. Create Pets Table
-  dbExecute(pool, "
-    CREATE TABLE IF NOT EXISTS pets (
-      pet_id SERIAL PRIMARY KEY,
-      name VARCHAR(100) NOT NULL,
-      type VARCHAR(50),
-      age INT
-    );
-  ")
-  
-  # 3. Create Feeding Schedules Table
-  dbExecute(pool, "
-    CREATE TABLE IF NOT EXISTS feeding_schedules (
-      sched_id SERIAL PRIMARY KEY,
-      pet_id INT,
-      feed_time TIME NOT NULL,
-      is_active BOOLEAN DEFAULT TRUE,
-      repeat_daily BOOLEAN DEFAULT TRUE,
-      sound_type VARCHAR(50) DEFAULT 'default_beep',
-      FOREIGN KEY (pet_id) REFERENCES pets(pet_id) ON DELETE CASCADE
-    );
-  ")
-  
-  # 4. Insert Initial User (Fixed Syntax)
-  # We removed sprintf because we are inserting the string directly
-  dbExecute(pool, "
-    INSERT INTO users (email, password_hash) 
-    VALUES ('jamilaaronguerta@gmail.com', 'your_actual_password_here')
-    ON CONFLICT (email) DO NOTHING;
-  ")
-  
-  message("✅ Database initialization successful!")
-  
-}, error = function(e) {
-  message("❌ Database Initialization Failed:")
-  message(e$message)
-  stop(e$message) 
-})
+if (!is.null(pool)) {
+  tryCatch({
+    message("🔄 Checking database tables...")
+    
+    # 1. Create Users Table
+    dbExecute(pool, "
+      CREATE TABLE IF NOT EXISTS users (
+        user_id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    ")
+    
+    # 2. Create Pets Table
+    dbExecute(pool, "
+      CREATE TABLE IF NOT EXISTS pets (
+        pet_id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        type VARCHAR(50),
+        age INT
+      );
+    ")
+    
+    # 3. Create Feeding Schedules Table
+    dbExecute(pool, "
+      CREATE TABLE IF NOT EXISTS feeding_schedules (
+        sched_id SERIAL PRIMARY KEY,
+        pet_id INT,
+        feed_time TIME NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        repeat_daily BOOLEAN DEFAULT TRUE,
+        sound_type VARCHAR(50) DEFAULT 'default_beep',
+        FOREIGN KEY (pet_id) REFERENCES pets(pet_id) ON DELETE CASCADE
+      );
+    ")
+    
+    # 4. Insert Initial User
+    dbExecute(pool, "
+      INSERT INTO users (email, password_hash) 
+      VALUES ('jamilaaronguerta@gmail.com', 'your_actual_password_here')
+      ON CONFLICT (email) DO NOTHING;
+    ")
+    
+    message("✅ Database initialization successful!")
+    
+  }, error = function(e) {
+    message("❌ Database Initialization Failed: ", e$message)
+    # We don't use stop() here so the app can still try to load the UI
+  })
+} else {
+  message("⚠️ Skipping Table Init: No database pool available.")
+}
 
 # --------------------- APP LOGIC ---------------------
 onStop(function() {
-  poolClose(pool)
+  # Check if pool actually exists before trying to close it
+  if (!is.null(pool)) {
+    message("🛑 Closing database pool...")
+    poolClose(pool)
+  }
 })
 
 # ... PASTE THE REST OF YOUR UI AND SERVER CODE HERE ...
