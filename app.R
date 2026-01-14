@@ -70,7 +70,7 @@ if (!is.null(pool)) {
     # 4. Insert Initial User
     dbExecute(pool, "
       INSERT INTO users (email, password_hash) 
-      VALUES ('jamilaaronguerta@gmail.com', 'your_actual_password_here')
+      VALUES ('jamilaaronguerta@gmail.com', 'jamil123#')
       ON CONFLICT (email) DO NOTHING;
     ")
     
