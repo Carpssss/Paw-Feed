@@ -12,20 +12,26 @@ startup_error <- NULL
 
 # --------------------- DATABASE CONNECTION ---------------------
 pool <- tryCatch({
-  # Get the port, but if it's empty, use 5432 as a backup
-  port_val <- Sys.getenv("DB_PORT")
-  if (port_val == "") port_val <- "5432" 
+  # 1. Fetch variables and strip any accidental whitespace
+  db_host <- trimws(Sys.getenv("DB_HOST"))
+  db_port <- trimws(Sys.getenv("DB_PORT"))
   
+  # 2. Safety check: If Render variables aren't ready, don't try to connect
+  if (db_host == "" || db_port == "") {
+    stop("Waiting for Environment Variables... DB_HOST or DB_PORT is currently empty.")
+  }
+
   dbPool(
     RPostgres::Postgres(),
-    host     = Sys.getenv("DB_HOST"),
-    port     = as.integer(port_val), # This will now be 5432 instead of NA
-    dbname   = Sys.getenv("DB_NAME"),
-    user     = Sys.getenv("DB_USER"),
-    password = Sys.getenv("DB_PASS"),
+    host     = db_host,
+    port     = as.integer(db_port),
+    dbname   = trimws(Sys.getenv("DB_NAME")),
+    user     = trimws(Sys.getenv("DB_USER")),
+    password = trimws(Sys.getenv("DB_PASS")),
     connect_timeout = 15
   )
 }, error = function(e) {
+  # This will display the actual error message on your login screen
   startup_error <<- paste("❌ CONNECTION ERROR:", e$message)
   NULL
 })
