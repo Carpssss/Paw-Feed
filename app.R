@@ -6,7 +6,9 @@ library(shinyjs)
 library(DBI)
 library(RPostgres) 
 library(pool)
-# library(sodium) # Keep this commented out
+
+# --- GLOBAL ERROR TRACKER ---
+startup_error <- NULL
 
 # --------------------- DATABASE CONNECTION ---------------------
 pool <- tryCatch({
@@ -20,97 +22,70 @@ pool <- tryCatch({
     connect_timeout = 15
   )
 }, error = function(e) {
-  # This will overwrite the "not available" message with the ACTUAL error
-  startup_error <<- paste("❌ SQL ERROR:", e$message)
+  startup_error <<- paste("❌ CONNECTION ERROR:", e$message)
   NULL
 })
 
 # --------------------- AUTO-INITIALIZATION ---------------------
 if (!is.null(pool)) {
   tryCatch({
-    message("🔄 Checking database tables...")
+    dbExecute(pool, "CREATE TABLE IF NOT EXISTS users (
+      user_id SERIAL PRIMARY KEY,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      password_hash VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );")
     
-    # 1. Create Users Table
-    dbExecute(pool, "
-      CREATE TABLE IF NOT EXISTS users (
-        user_id SERIAL PRIMARY KEY,
-        email VARCHAR(255) NOT NULL UNIQUE,
-        password_hash VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    ")
+    dbExecute(pool, "CREATE TABLE IF NOT EXISTS pets (
+      pet_id SERIAL PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      type VARCHAR(50),
+      age INT
+    );")
     
-    # 2. Create Pets Table
-    dbExecute(pool, "
-      CREATE TABLE IF NOT EXISTS pets (
-        pet_id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        type VARCHAR(50),
-        age INT
-      );
-    ")
+    dbExecute(pool, "CREATE TABLE IF NOT EXISTS feeding_schedules (
+      sched_id SERIAL PRIMARY KEY,
+      pet_id INT,
+      feed_time TIME NOT NULL,
+      is_active BOOLEAN DEFAULT TRUE,
+      repeat_daily BOOLEAN DEFAULT TRUE,
+      sound_type VARCHAR(50) DEFAULT 'default_beep',
+      FOREIGN KEY (pet_id) REFERENCES pets(pet_id) ON DELETE CASCADE
+    );")
     
-    # 3. Create Feeding Schedules Table
-    dbExecute(pool, "
-      CREATE TABLE IF NOT EXISTS feeding_schedules (
-        sched_id SERIAL PRIMARY KEY,
-        pet_id INT,
-        feed_time TIME NOT NULL,
-        is_active BOOLEAN DEFAULT TRUE,
-        repeat_daily BOOLEAN DEFAULT TRUE,
-        sound_type VARCHAR(50) DEFAULT 'default_beep',
-        FOREIGN KEY (pet_id) REFERENCES pets(pet_id) ON DELETE CASCADE
-      );
-    ")
-    
-    # 4. Insert Initial User
-    dbExecute(pool, "
-      INSERT INTO users (email, password_hash) 
+    dbExecute(pool, "INSERT INTO users (email, password_hash) 
       VALUES ('jamilaaronguerta@gmail.com', 'jamil123#')
-      ON CONFLICT (email) DO NOTHING;
-    ")
-    
-    message("✅ Database initialization successful!")
-    
+      ON CONFLICT (email) DO NOTHING;")
+      
   }, error = function(e) {
-    message("❌ Database Initialization Failed: ", e$message)
-    # We don't use stop() here so the app can still try to load the UI
+    startup_error <<- paste("❌ TABLE INIT ERROR:", e$message)
   })
-} else {
-  message("⚠️ Skipping Table Init: No database pool available.")
 }
 
-# --------------------- APP LOGIC ---------------------
 onStop(function() {
-  # Check if pool actually exists before trying to close it
-  if (!is.null(pool)) {
-    message("🛑 Closing database pool...")
-    poolClose(pool)
-  }
+  if (!is.null(pool)) poolClose(pool)
 })
 
-# ... PASTE THE REST OF YOUR UI AND SERVER CODE HERE ...
-# --------------------- 1. LOGIN UI ---------------------
+# --------------------- LOGIN UI (WITH DEBUG) ---------------------
 login_ui <- div(
   class = "login-container",
+  # THIS SECTION SHOWS YOU THE ERROR ON SCREEN
+  if (!is.null(startup_error)) {
+    div(style="background: #fee; border: 1px solid red; color: red; padding: 10px; margin-bottom: 20px; border-radius: 5px;",
+        tags$b("Database Error: "), startup_error)
+  },
   div(class = "login-box",
       h2("Paw Feed", class = "login-logo"),
       p("Welcome back, human", class = "login-subtitle"),
-      
       div(class = "form-group",
           tags$label("Email"),
-          textInput("user_email", NULL, placeholder = "Enter your email")
-      ),
-      
+          textInput("user_email", NULL, placeholder = "Enter your email")),
       div(class = "form-group",
           tags$label("Password"),
-          passwordInput("user_password", NULL, placeholder = "••••••••")
-      ),
-      
-      actionButton("login_btn", "Sign In", class = "btn-login"),
+          passwordInput("user_password", NULL, placeholder = "••••••••")),
+      actionButton("login_btn", "Sign In", class = "btn-login")
   )
 )
-
 # --------------------- 2. DASHBOARD UI ---------------------
 dashboard_ui <- tagList(
   div(id = "dropdownModal", class = "dropdown-modal",
@@ -368,40 +343,32 @@ server <- function(input, output, session) {
   })
   
  observeEvent(input$login_btn, {
-  # 1. First, check if the database even connected
-  if (is.null(pool)) {
-    showNotification("❌ Database connection is not available. Check Render logs.", type = "error")
-    return()
-  }
-  
-  req(input$user_email, input$user_password)
-  
-  # 2. Wrap the query in tryCatch to prevent "Disconnected" on SQL errors
-  user_query <- tryCatch({
-    dbGetQuery(pool, sprintf(
-      "SELECT * FROM users WHERE email = %s", 
-      dbQuoteString(pool, input$user_email)
-    ))
-  }, error = function(e) {
-    message("Login Query Error: ", e$message)
-    return(NULL)
-  })
-  
-  # 3. Handle the login result
-  if (!is.null(user_query) && nrow(user_query) == 1) {
-    if (user_query$password_hash == input$user_password) {
-      auth$logged_in <- TRUE
-      auth$user_info <- user_query
-      session$sendCustomMessage("setCookie", list(name = "pawfeed_user", value = input$user_email))
-      showNotification("Welcome back!", type = "message")
-    } else {
-      showNotification("Invalid password", type = "error")
+    if (is.null(pool)) {
+      showNotification(paste("Database Error:", startup_error), type = "error")
+      return()
     }
-  } else {
-    showNotification("User not found or database error", type = "error")
-  }
-})
-  
+    
+    req(input$user_email, input$user_password)
+    
+    user_query <- tryCatch({
+      dbGetQuery(pool, sprintf(
+        "SELECT * FROM users WHERE email = %s", 
+        dbQuoteString(pool, input$user_email)
+      ))
+    }, error = function(e) { return(NULL) })
+    
+    if (!is.null(user_query) && nrow(user_query) == 1) {
+      if (user_query$password_hash == input$user_password) {
+        auth$logged_in <- TRUE
+        auth$user_info <- user_query
+        session$sendCustomMessage("setCookie", list(name = "pawfeed_user", value = input$user_email))
+      } else {
+        showNotification("Invalid password", type = "error")
+      }
+    } else {
+      showNotification("User not found", type = "error")
+    }
+  })
   observeEvent(input$logout_btn, {
     auth$logged_in <- FALSE
     auth$user_info <- NULL
