@@ -1,4 +1,5 @@
 options(shiny.sanitize.errors = FALSE)
+options(shiny.error = browser)
 # --------------------- LIBRARIES ---------------------
 library(shiny)
 library(shinyjs)
@@ -26,15 +27,16 @@ pool <- tryCatch({
   }
   
   dbPool(
-    RPostgres::Postgres(),
-    host     = Sys.getenv("DB_HOST"), 
-    port     = as.integer(Sys.getenv("DB_PORT")),
-    dbname   = Sys.getenv("DB_NAME"),
-    user     = Sys.getenv("DB_USER"),
-    password = Sys.getenv("DB_PASS"),
-    minSize  = 1,
-    maxSize  = 5  # ADDED: Required for RPostgres
-  )
+  RPostgres::Postgres(),
+  host     = Sys.getenv("DB_HOST"), 
+  port     = as.integer(Sys.getenv("DB_PORT")),
+  dbname   = Sys.getenv("DB_NAME"),
+  user     = Sys.getenv("DB_USER"),
+  password = Sys.getenv("DB_PASS"),
+  sslmode  = "require",  # ← ADD THIS LINE
+  minSize  = 1,
+  maxSize  = 5
+)
 }, error = function(e) {
   # This prints the REAL error to the logs if it crashes
   message("❌ DB CONNECT ERROR:", e$message)
